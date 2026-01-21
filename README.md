@@ -22,7 +22,7 @@ The frontend then uses this JWT to access M-Lab's Locate API at
 | `-listen-addr` | `LISTEN_ADDR` | `:8080` | Address to listen on |
 | `-project-id` | `PROJECT_ID` | (required) | GCP project ID for Secret Manager |
 | `-secret-name` | `SECRET_NAME` | (required) | Name of the secret containing the API key |
-| `-token-exchange-url` | `TOKEN_EXCHANGE_URL` | `https://auth.measurementlab.net/v0/token/integration` | URL of the token exchange service |
+| `-token-exchange-url` | `TOKEN_EXCHANGE_URL` | `https://auth.mlab-sandbox.measurementlab.net/v0/token/integration` | URL of the token exchange service |
 | `-allowed-origin` | `ALLOWED_ORIGIN` | `https://speed.measurementlab.net` | Allowed CORS origin |
 
 ## API

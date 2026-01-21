@@ -20,7 +20,7 @@ var (
 	listenAddr       = flag.String("listen-addr", ":8080", "Address to listen on")
 	projectID        = flag.String("project-id", "", "GCP project ID for Secret Manager")
 	secretName       = flag.String("secret-name", "", "Name of the secret containing the API key")
-	tokenExchangeURL = flag.String("token-exchange-url", "https://auth.measurementlab.net/v0/token/integration", "URL of the token exchange service")
+	tokenExchangeURL = flag.String("token-exchange-url", "https://auth.mlab-sandbox.measurementlab.net/v0/token/integration", "URL of the token exchange service")
 	allowedOrigin    = flag.String("allowed-origin", "https://speed.measurementlab.net", "Allowed CORS origin")
 )
 
