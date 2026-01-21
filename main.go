@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/m-lab/go/flagx"
+	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/speed-proxy/handler"
 )
 
@@ -38,9 +40,7 @@ func main() {
 
 	// Initialize Secret Manager client.
 	smClient, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		log.Fatalf("Failed to create Secret Manager client: %v", err)
-	}
+	rtx.Must(err, "Failed to create Secret Manager client")
 	defer smClient.Close()
 
 	// Create the token handler.
@@ -71,8 +71,9 @@ func main() {
 	// Start server in a goroutine.
 	go func() {
 		log.Printf("Starting server on %s", *listenAddr)
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+		err := server.ListenAndServe()
+		if !errors.Is(err, http.ErrServerClosed) {
+			rtx.Must(err, "Server error")
 		}
 	}()
 
@@ -82,7 +83,5 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server shutdown error: %v", err)
-	}
+	rtx.Must(server.Shutdown(shutdownCtx), "Server shutdown error")
 }
