@@ -8,18 +8,13 @@ import (
 	"io"
 	"log"
 	"net/http"
-
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
 // Config contains the configuration for the token handler.
 type Config struct {
-	ProjectID        string
-	SecretName       string
+	APIKey           string
 	TokenExchangeURL string
 	AllowedOrigin    string
-	SMClient         *secretmanager.Client
 	HTTPClient       *http.Client
 }
 
@@ -62,16 +57,8 @@ func (h *Handler) Token(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Get the API key from Secret Manager.
-	apiKey, err := h.getAPIKey(ctx)
-	if err != nil {
-		log.Printf("Failed to get API key: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	// Exchange the API key for a JWT token.
-	token, err := h.exchangeToken(ctx, apiKey)
+	token, err := h.exchangeToken(ctx, h.config.APIKey)
 	if err != nil {
 		log.Printf("Failed to exchange token: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -89,20 +76,6 @@ func (h *Handler) setCORSHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Max-Age", "86400")
-}
-
-// getAPIKey retrieves the API key from Secret Manager.
-func (h *Handler) getAPIKey(ctx context.Context) (string, error) {
-	name := fmt.Sprintf("projects/%s/secrets/%s/versions/latest", h.config.ProjectID, h.config.SecretName)
-
-	result, err := h.config.SMClient.AccessSecretVersion(ctx, &secretmanagerpb.AccessSecretVersionRequest{
-		Name: name,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to access secret version: %w", err)
-	}
-
-	return string(result.Payload.Data), nil
 }
 
 // exchangeToken exchanges an API key for a JWT token.
