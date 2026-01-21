@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/speed-proxy/handler"
@@ -18,8 +17,7 @@ import (
 
 var (
 	listenAddr       = flag.String("listen-addr", ":8080", "Address to listen on")
-	projectID        = flag.String("project-id", "", "GCP project ID for Secret Manager")
-	secretName       = flag.String("secret-name", "", "Name of the secret containing the API key")
+	apiKey           = flag.String("api-key", "", "API key for token exchange")
 	tokenExchangeURL = flag.String("token-exchange-url", "https://auth.mlab-sandbox.measurementlab.net/v0/token/integration", "URL of the token exchange service")
 	allowedOrigin    = flag.String("allowed-origin", "https://speed.measurementlab.net", "Allowed CORS origin")
 )
@@ -28,28 +26,18 @@ func main() {
 	flag.Parse()
 	flagx.ArgsFromEnv(flag.CommandLine)
 
-	if *projectID == "" {
-		log.Fatal("-project-id is required")
-	}
-	if *secretName == "" {
-		log.Fatal("-secret-name is required")
+	if *apiKey == "" {
+		log.Fatal("-api-key is required")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Initialize Secret Manager client.
-	smClient, err := secretmanager.NewClient(ctx)
-	rtx.Must(err, "Failed to create Secret Manager client")
-	defer smClient.Close()
-
 	// Create the token handler.
 	h := handler.New(handler.Config{
-		ProjectID:        *projectID,
-		SecretName:       *secretName,
+		APIKey:           *apiKey,
 		TokenExchangeURL: *tokenExchangeURL,
 		AllowedOrigin:    *allowedOrigin,
-		SMClient:         smClient,
 		HTTPClient:       &http.Client{Timeout: 10 * time.Second},
 	})
 
