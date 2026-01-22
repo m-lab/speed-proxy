@@ -15,16 +15,25 @@ receivers:
           static_configs:
             - targets: ['localhost:9990']
 
+processors:
+  resourcedetection/gcp:
+    detectors: [gcp]
+    timeout: 2s
+    override: false
+
 exporters:
   prometheusremotewrite:
     endpoint: ${env:PROMETHEUS_ENDPOINT}
     auth:
       authenticator: basicauth/prometheus
     timeout: 30s
+    resource_to_telemetry_conversion:
+      enabled: true
 
 service:
   extensions: [basicauth/prometheus, health_check]
   pipelines:
     metrics:
       receivers: [prometheus]
+      processors: [resourcedetection/gcp]
       exporters: [prometheusremotewrite]
