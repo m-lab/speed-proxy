@@ -97,14 +97,16 @@ func (h *Handler) exchangeToken(ctx context.Context, apiKey string) (string, err
 
 	start := time.Now()
 	resp, err := h.config.HTTPClient.Do(req)
-	metrics.UpstreamRequestDuration.Observe(time.Since(start).Seconds())
+	duration := time.Since(start).Seconds()
 
 	if err != nil {
+		metrics.UpstreamRequestDuration.WithLabelValues("error").Observe(duration)
 		metrics.UpstreamRequestsTotal.WithLabelValues("error").Inc()
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
+	metrics.UpstreamRequestDuration.WithLabelValues("success").Observe(duration)
 	metrics.UpstreamRequestsTotal.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
 
 	if resp.StatusCode != http.StatusOK {

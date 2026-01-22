@@ -37,11 +37,12 @@ var (
 	)
 
 	// UpstreamRequestDuration measures upstream token exchange latency.
-	UpstreamRequestDuration = promauto.NewHistogram(
+	UpstreamRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "speedproxy_upstream_request_duration_seconds",
 			Help:    "Duration of upstream token exchange requests.",
 			Buckets: prometheus.DefBuckets,
 		},
+		[]string{"result"},
 	)
 )
