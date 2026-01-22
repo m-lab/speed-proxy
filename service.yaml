@@ -1,0 +1,51 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: speed-proxy
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/container-dependencies: '{"speed-proxy":["otel-collector"]}'
+    spec:
+      containers:
+        - name: speed-proxy
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 8080
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: speed-proxy-api-key
+                  key: latest
+            - name: TOKEN_EXCHANGE_URL
+              value: "https://auth.mlab-sandbox.measurementlab.net/v0/token/integration"
+            - name: ALLOWED_ORIGIN
+              value: "https://speed.measurementlab.net"
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: "1"
+        - name: otel-collector
+          image: OTEL_IMAGE_PLACEHOLDER
+          env:
+            - name: PROMETHEUS_ENDPOINT
+              value: "https://prometheus-basicauth.MLAB_PROJECT_PLACEHOLDER.measurementlab.net/api/v1/write"
+            - name: PROMETHEUS_USER
+              valueFrom:
+                secretKeyRef:
+                  name: prometheus-support-build-prom-auth-user
+                  key: latest
+            - name: PROMETHEUS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prometheus-support-build-prom-auth-pass
+                  key: latest
+          startupProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 0
+            periodSeconds: 1
+            failureThreshold: 10

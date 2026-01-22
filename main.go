@@ -11,8 +11,11 @@ import (
 	"time"
 
 	"github.com/m-lab/go/flagx"
+	"github.com/m-lab/go/prometheusx"
 	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/speed-proxy/handler"
+	"github.com/m-lab/speed-proxy/metrics"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -30,6 +33,8 @@ func main() {
 		log.Fatal("-api-key is required")
 	}
 
+	prometheusx.MustServeMetrics()
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -41,8 +46,17 @@ func main() {
 		HTTPClient:       &http.Client{Timeout: 10 * time.Second},
 	})
 
+	// Wrap handler with promhttp instrumentation.
+	tokenHandler := promhttp.InstrumentHandlerDuration(
+		metrics.TokenRequestDuration,
+		promhttp.InstrumentHandlerCounter(
+			metrics.TokenRequestsTotal,
+			http.HandlerFunc(h.Token),
+		),
+	)
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v0/token", h.Token)
+	mux.Handle("/v0/token", tokenHandler)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))

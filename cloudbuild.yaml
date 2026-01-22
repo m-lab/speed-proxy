@@ -1,39 +1,56 @@
 substitutions:
   _REGION: us-east1
   _SERVICE_NAME: speed-proxy
-  _ALLOWED_ORIGIN: https://speed.measurementlab.net
-  _TOKEN_EXCHANGE_URL: https://auth.mlab-sandbox.measurementlab.net/v0/token/integration
+  _MLAB_PROJECT: mlab-sandbox
 
 steps:
-  # 1. Build the container image
+  # 1. Build the speed-proxy container image
   - name: "gcr.io/cloud-builders/docker"
     id: Build
+    waitFor: ['-']
     args: ["build", "-t", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$BUILD_ID", "-t", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:latest", "."]
 
-  # 2. Push to Artifact Registry
+  # 2. Build the otel-collector sidecar image
+  - name: "gcr.io/cloud-builders/docker"
+    id: BuildOtel
+    waitFor: ['-']
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:$BUILD_ID", "-t", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:latest", "otel-collector"]
+
+  # 3. Push speed-proxy image to Artifact Registry
   - name: "gcr.io/cloud-builders/docker"
     id: Push
     args: ["push", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:${BUILD_ID}"]
     waitFor: ["Build"]
 
-  # 3. Deploy to Cloud Run
+  # 4. Push otel-collector image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    id: PushOtel
+    args: ["push", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:${BUILD_ID}"]
+    waitFor: ["BuildOtel"]
+
+  # 5. Substitute placeholders in service.yaml and deploy
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Deploy
-    entrypoint: gcloud
-    args: [
-      "run", "deploy", "${_SERVICE_NAME}",
-      "--image", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$BUILD_ID",
-      "--platform", "managed",
-      "--region", "${_REGION}",
-      "--allow-unauthenticated",
-      "--set-secrets=API_KEY=speed-proxy-api-key:latest",
-      "--set-env-vars=TOKEN_EXCHANGE_URL=${_TOKEN_EXCHANGE_URL},ALLOWED_ORIGIN=${_ALLOWED_ORIGIN}",
-      "--memory=256Mi",
-      "--cpu=1",
-      "--project=${PROJECT_ID}"
-    ]
-    waitFor: ["Push"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        sed -e "s|OTEL_IMAGE_PLACEHOLDER|${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:${BUILD_ID}|g" \
+            -e "s|IMAGE_PLACEHOLDER|${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:${BUILD_ID}|g" \
+            -e "s|MLAB_PROJECT_PLACEHOLDER|${_MLAB_PROJECT}|g" \
+            service.yaml > service-deploy.yaml
+        gcloud run services replace service-deploy.yaml \
+          --region=${_REGION} \
+          --project=${PROJECT_ID}
+        gcloud run services set-iam-policy ${_SERVICE_NAME} \
+          --region=${_REGION} \
+          --project=${PROJECT_ID} \
+          --quiet \
+          <(echo '{"bindings":[{"role":"roles/run.invoker","members":["allUsers"]}]}')
+    waitFor: ["Push", "PushOtel"]
 
 images:
   - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$BUILD_ID"
   - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:latest"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:$BUILD_ID"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:latest"
