@@ -1,5 +1,12 @@
 # speed-proxy
 
+[![Test](https://github.com/m-lab/speed-proxy/actions/workflows/test.yml/badge.svg)](https://github.com/m-lab/speed-proxy/actions/workflows/test.yml)
+[![Coverage Status](https://coveralls.io/repos/github/m-lab/speed-proxy/badge.svg?branch=main)](https://coveralls.io/github/m-lab/speed-proxy?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/m-lab/speed-proxy)](https://goreportcard.com/report/github.com/m-lab/speed-proxy)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/m-lab/speed-proxy)](https://go.dev/)
+[![Go Reference](https://pkg.go.dev/badge/github.com/m-lab/speed-proxy.svg)](https://pkg.go.dev/github.com/m-lab/speed-proxy)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/m-lab/speed-proxy)
+
 Integrator backend service for speed.measurementlab.net. This service acts as a
 security boundary between the frontend client and M-Lab's token exchange
 service.
@@ -8,9 +15,8 @@ service.
 
 The service provides a single endpoint that:
 
-1. Retrieves the M-Lab API key from Google Secret Manager
-2. Exchanges the API key for a short-lived JWT token via M-Lab's token exchange service
-3. Returns the JWT to the frontend client
+1. Exchanges the M-Lab API key for a short-lived JWT token via M-Lab's token exchange service
+2. Returns the JWT to the frontend client
 
 The frontend then uses this JWT to access M-Lab's Locate API at
 `/v2/priority/nearest`.
@@ -20,8 +26,7 @@ The frontend then uses this JWT to access M-Lab's Locate API at
 | Flag | Environment Variable | Default | Description |
 |------|---------------------|---------|-------------|
 | `-listen-addr` | `LISTEN_ADDR` | `:8080` | Address to listen on |
-| `-project-id` | `PROJECT_ID` | (required) | GCP project ID for Secret Manager |
-| `-secret-name` | `SECRET_NAME` | (required) | Name of the secret containing the API key |
+| `-api-key` | `API_KEY` | (required) | M-Lab API key for token exchange |
 | `-token-exchange-url` | `TOKEN_EXCHANGE_URL` | `https://auth.mlab-sandbox.measurementlab.net/v0/token/integration` | URL of the token exchange service |
 | `-allowed-origin` | `ALLOWED_ORIGIN` | `https://speed.measurementlab.net` | Allowed CORS origin |
 
@@ -44,42 +49,29 @@ Health check endpoint. Returns `200 OK` with body `ok`.
 
 ## Deployment
 
-### Prerequisites
-
-1. Create a secret in Secret Manager containing the M-Lab API key:
-   ```bash
-   echo -n "mlabk.ki_xxx.secret" | gcloud secrets create mlab-api-key \
-     --data-file=- \
-     --project=YOUR_PROJECT_ID
-   ```
-
-2. Grant the Cloud Run service account access to the secret:
-   ```bash
-   gcloud secrets add-iam-policy-binding mlab-api-key \
-     --member="serviceAccount:YOUR_SERVICE_ACCOUNT" \
-     --role="roles/secretmanager.secretAccessor" \
-     --project=YOUR_PROJECT_ID
-   ```
-
 ### Deploy to Cloud Run
 
 ```bash
 gcloud run deploy speed-proxy \
   --source . \
   --region us-central1 \
-  --set-env-vars "PROJECT_ID=YOUR_PROJECT_ID,SECRET_NAME=mlab-api-key" \
+  --set-env-vars "API_KEY=mlabk.ki_xxx.secret" \
   --allow-unauthenticated
 ```
 
 ## Local Development
 
 ```bash
-# Set up Application Default Credentials
-gcloud auth application-default login
+API_KEY="mlabk.ki_xxx.secret" go run . -allowed-origin="http://localhost:3000"
+```
 
-# Run locally
-go run . \
-  -project-id=YOUR_PROJECT_ID \
-  -secret-name=mlab-api-key \
-  -allowed-origin="http://localhost:3000"
+## Docker
+
+```bash
+# Build
+docker build -t speed-proxy .
+
+# Run
+export API_KEY="mlabk.ki_xxx.secret"
+docker run -p 8080:8080 -e API_KEY speed-proxy
 ```
