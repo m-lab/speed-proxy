@@ -62,9 +62,7 @@ gcloud run deploy speed-proxy \
 ## Local Development
 
 ```bash
-go run . \
-  -api-key="mlabk.ki_xxx.secret" \
-  -allowed-origin="http://localhost:3000"
+API_KEY="mlabk.ki_xxx.secret" go run . -allowed-origin="http://localhost:3000"
 ```
 
 ## Docker
@@ -74,5 +72,6 @@ go run . \
 docker build -t speed-proxy .
 
 # Run
-docker run -p 8080:8080 -e API_KEY="mlabk.ki_xxx.secret" speed-proxy
+export API_KEY="mlabk.ki_xxx.secret"
+docker run -p 8080:8080 -e API_KEY speed-proxy
 ```
