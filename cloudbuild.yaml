@@ -2,6 +2,7 @@ substitutions:
   _REGION: us-east1
   _SERVICE_NAME: speed-proxy
   _MLAB_PROJECT: mlab-sandbox
+  _ALLOWED_ORIGIN: https://speed.measurementlab.net
 
 steps:
   # 1. Build the speed-proxy container image
@@ -38,6 +39,7 @@ steps:
         sed -e "s|OTEL_IMAGE_PLACEHOLDER|${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/otel-collector:${BUILD_ID}|g" \
             -e "s|IMAGE_PLACEHOLDER|${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:${BUILD_ID}|g" \
             -e "s|MLAB_PROJECT_PLACEHOLDER|${_MLAB_PROJECT}|g" \
+            -e "s|ALLOWED_ORIGIN_PLACEHOLDER|${_ALLOWED_ORIGIN}|g" \
             service.yaml > service-deploy.yaml
         gcloud run services replace service-deploy.yaml \
           --region=${_REGION} \

@@ -22,7 +22,7 @@ spec:
             - name: TOKEN_EXCHANGE_URL
               value: "https://auth.MLAB_PROJECT_PLACEHOLDER.measurementlab.net/v0/token/integration"
             - name: ALLOWED_ORIGIN
-              value: "https://speed.measurementlab.net"
+              value: "ALLOWED_ORIGIN_PLACEHOLDER"
           resources:
             limits:
               memory: 256Mi
