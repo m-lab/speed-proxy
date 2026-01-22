@@ -20,7 +20,7 @@ spec:
                   name: speed-proxy-api-key
                   key: latest
             - name: TOKEN_EXCHANGE_URL
-              value: "https://auth.mlab-sandbox.measurementlab.net/v0/token/integration"
+              value: "https://auth.MLAB_PROJECT_PLACEHOLDER.measurementlab.net/v0/token/integration"
             - name: ALLOWED_ORIGIN
               value: "https://speed.measurementlab.net"
           resources:
