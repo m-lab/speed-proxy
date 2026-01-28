@@ -8,6 +8,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/m-lab/speed-proxy/metrics"
 )
 
 // Config contains the configuration for the token handler.
@@ -91,11 +95,19 @@ func (h *Handler) exchangeToken(ctx context.Context, apiKey string) (string, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	start := time.Now()
 	resp, err := h.config.HTTPClient.Do(req)
+	duration := time.Since(start).Seconds()
+
 	if err != nil {
+		metrics.UpstreamRequestDuration.WithLabelValues("error").Observe(duration)
+		metrics.UpstreamRequestsTotal.WithLabelValues("error").Inc()
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	metrics.UpstreamRequestDuration.WithLabelValues("success").Observe(duration)
+	metrics.UpstreamRequestsTotal.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
